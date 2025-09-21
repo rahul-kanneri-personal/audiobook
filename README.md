@@ -82,6 +82,7 @@ There are other alternatives to Open AI's Whisper model, I decided to use Open A
 
 #### 1. Product Service
 **Technology**: FastAPI + Elasticsearch + PostgreSQL
+
 **Responsibilities**:
 - Audiobook catalog management
 - Search and filtering (Elasticsearch)
@@ -96,6 +97,7 @@ There are other alternatives to Open AI's Whisper model, I decided to use Open A
 
 #### 2. Cart Service
 **Technology**: FastAPI + Redis + PostgreSQL
+
 **Responsibilities**:
 - Shopping cart management
 - Session handling for guest users
@@ -108,6 +110,7 @@ There are other alternatives to Open AI's Whisper model, I decided to use Open A
 
 #### 3. Order Service
 **Technology**: FastAPI + PostgreSQL + Event Streaming
+
 **Responsibilities**:
 - Order processing and management
 - Order history and tracking
@@ -116,6 +119,7 @@ There are other alternatives to Open AI's Whisper model, I decided to use Open A
 
 #### 4. Payment Service
 **Technology**: FastAPI + Stripe + PostgreSQL
+
 **Responsibilities**:
 - Payment processing with Stripe
 - Webhook handling for payment events
@@ -124,6 +128,7 @@ There are other alternatives to Open AI's Whisper model, I decided to use Open A
 
 #### 5. Transcription Service
 **Technology**: FastAPI + Celery + OpenAI + File Storage
+
 **Responsibilities**:
 - Audio file transcription using Whisper
 - AI summary generation
@@ -133,11 +138,13 @@ There are other alternatives to Open AI's Whisper model, I decided to use Open A
 
 #### 6. Notification Service
 **Technology**: FastAPI + Email Provider
+
 **Responsibilities**:
 - Email notifications
 
 #### 7. User Service
 **Technology**: FastAPI + PostgreSQL + Clerk Integration
+
 **Responsibilities**:
 - User profile management
 - Role-based access control
