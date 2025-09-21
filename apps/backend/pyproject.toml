@@ -1,0 +1,68 @@
+[tool.poetry]
+name = "audiobook-backend"
+version = "0.1.0"
+description = "Backend API for audiobook application"
+authors = ["Your Name <your.email@example.com>"]
+readme = "README.md"
+packages = [{include = "app"}]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+fastapi = "^0.104.1"
+uvicorn = {extras = ["standard"], version = "^0.24.0"}
+sqlalchemy = "^2.0.23"
+alembic = "^1.12.1"
+psycopg2-binary = "^2.9.9"
+pydantic = "^2.5.0"
+pydantic-settings = "^2.1.0"
+python-dotenv = "^1.0.0"
+python-multipart = "^0.0.6"
+
+[tool.poetry.group.dev.dependencies]
+black = "^23.11.0"
+isort = "^5.12.0"
+flake8 = "^6.1.0"
+pre-commit = "^3.6.0"
+pytest = "^7.4.3"
+pytest-asyncio = "^0.21.1"
+httpx = "^0.25.2"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 88
+target-version = ['py311']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | build
+  | dist
+)/
+'''
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+line_length = 88
+known_first_party = ["app"]
+
+[tool.flake8]
+max-line-length = 88
+extend-ignore = ["E203", "W503"]
+exclude = [
+    ".git",
+    "__pycache__",
+    ".venv",
+    "venv",
+    "build",
+    "dist",
+]
