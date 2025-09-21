@@ -32,7 +32,7 @@ In this README, I’ve outlined two implementation approaches: the current solut
 - **Deployment**: Docker containers
 
 ### Authentication
-For the MVP I decided to use clerk as the identity provide, which allows the user to signup with email & password and add google auth or any social media authentication easily possible. Though using clerk as identity provider for a public website like e-commerce store will be costly decision. I used it since its easier to integrate clerk as identity provider (For demo purpose only). For a production environment I would rather choose some cheaper options like AWS cognito, Supabase Auth or even go with KeyClock (Open source) solution as these providers allow more MAU (Monthly active users).
+For the MVP I decided to use clerk as the identity provider, which allows the user to signup with email & password and add google auth or any social media authentication easily possible. Though using clerk as identity provider for a public website like e-commerce store will be costly decision. I used it since its easier to integrate clerk as identity provider (For demo purpose only). For a production environment I would rather choose some cheaper options like AWS cognito, Supabase Auth or even go with KeyClock (Open source) solution as these providers allow more MAU (Monthly active users).
 
 By choosing an Identity provider, I don't need to handle user's creditentals by myself and it also allows me to add social login and Two factor authentication easily to the system.
 
