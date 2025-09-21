@@ -1,11 +1,11 @@
 # Database Configuration
-POSTGRES_SERVER=localhost
+POSTGRES_DB=audiobook_db
 POSTGRES_USER=postgres
 POSTGRES_PASSWORD=postgres
-POSTGRES_DB=audiobook_db
-POSTGRES_PORT=5432
+POSTGRES_PORT=5434
 
-# CORS Origins (comma-separated)
+# Backend Configuration
+BACKEND_PORT=8000
 BACKEND_CORS_ORIGINS=http://localhost:3000,http://localhost:3001
 
 # API Configuration

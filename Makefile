@@ -3,6 +3,7 @@
 # Default target
 help:
 	@echo "Available commands:"
+	@echo "  setup-env   - Setup environment variables from template"
 	@echo "  install     - Install dependencies with Poetry"
 	@echo "  run         - Run the FastAPI application"
 	@echo "  format      - Format code with Black and isort"
@@ -55,8 +56,18 @@ clean:
 	docker system prune -f
 
 # Setup commands
+setup-env:
+	@if [ -f ".env" ]; then \
+		echo "⚠️  .env file already exists. Backing up to .env.backup"; \
+		cp .env .env.backup; \
+	fi
+	cp environment.example .env
+	@echo "✅ Environment file created: .env"
+	@echo "🔧 Please edit .env with your actual values before running the application"
+
 setup-pre-commit:
 	cd apps/backend && poetry run pre-commit install
 
-setup-dev: install setup-pre-commit
+setup-dev: setup-env install setup-pre-commit
 	@echo "Development environment setup complete!"
+	@echo "📝 Don't forget to update .env with your actual values!"

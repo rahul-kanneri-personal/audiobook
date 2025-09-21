@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     POSTGRES_USER: str = "postgres"
     POSTGRES_PASSWORD: str = "postgres"
     POSTGRES_DB: str = "audiobook_db"
-    POSTGRES_PORT: str = "5432"
+    POSTGRES_PORT: str = "5434"
 
     @property
     def DATABASE_URL(self) -> str:
@@ -28,19 +28,28 @@ class Settings(BaseSettings):
             f"@{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
         )
 
-    # CORS
-    BACKEND_CORS_ORIGINS: List[AnyHttpUrl] = []
+    # CORS - Allow all origins for now
+    BACKEND_CORS_ORIGINS: str = "*"
 
-    @field_validator("BACKEND_CORS_ORIGINS", mode="before")
+    @field_validator("BACKEND_CORS_ORIGINS", mode="after")
     @classmethod
-    def assemble_cors_origins(
-        cls, v: Union[str, List[str]]
-    ) -> Union[List[str], str]:
-        if isinstance(v, str) and not v.startswith("["):
-            return [i.strip() for i in v.split(",")]
-        elif isinstance(v, (list, str)):
-            return v
-        raise ValueError(v)
+    def assemble_cors_origins(cls, v: str) -> List[str]:
+        if v == "*":
+            return ["*"]
+        if not v:
+            return []
+        return [i.strip() for i in v.split(",")]
+
+    # Clerk Authentication
+    CLERK_SECRET_KEY: str = ""
+
+    # DigitalOcean Spaces
+    DO_SPACES_KEY: str = ""
+    DO_SPACES_SECRET: str = ""
+    DO_SPACES_ENDPOINT: str = "https://nyc3.digitaloceanspaces.com"
+    DO_SPACES_REGION: str = "nyc3"
+    DO_SPACES_BUCKET: str = ""
+    DO_SPACES_CDN_URL: str = ""
 
 
 settings = Settings()

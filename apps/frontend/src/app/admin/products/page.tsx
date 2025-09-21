@@ -1,6 +1,8 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { AdminLayout } from '@/components/admin/admin-layout';
+import { CreateCategoryDialog } from '@/components/admin/create-category-dialog';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -112,6 +114,8 @@ const categories = [
 ];
 
 export default function ProductsPage() {
+  const router = useRouter();
+
   return (
     <AdminLayout>
       <div className="space-y-8">
@@ -125,7 +129,7 @@ export default function ProductsPage() {
               Manage your audiobook catalog and inventory.
             </p>
           </div>
-          <Button>
+          <Button onClick={() => router.push('/admin/audiobooks/create')}>
             Add New Product
           </Button>
         </div>
@@ -150,6 +154,7 @@ export default function ProductsPage() {
                     {category}
                   </Button>
                 ))}
+                <CreateCategoryDialog />
               </div>
             </div>
           </CardContent>
