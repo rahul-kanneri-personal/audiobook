@@ -5,6 +5,7 @@ In this README, I’ve outlined two implementation approaches: the current solut
 ## Current Implementation (MVP/Monolithic)
 
 ### Architecture Overview
+<img width="686" height="484" alt="Screenshot 2568-09-21 at 23 26 24" src="https://github.com/user-attachments/assets/f0cf804d-a5f0-4b16-80f6-fbee96ca27f4" />
 
 
 ### Technology Stack of MVP
