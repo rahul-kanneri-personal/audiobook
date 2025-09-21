@@ -45,9 +45,9 @@ Traditional approach
 Frontend => Backend => Storage solution
 
 My approach
-Frontend <=> Backend
-Frontend => Storage solution
-Frontend => Backend (Starts the transcription process)
+1. Frontend <=> Backend
+2. Frontend => Storage solution
+3. Frontend => Backend (Starts the transcription process)
 
 ### Transcription
 Once the file is uploaded directly by Frontend, Frontend informs the backend that the file is uploaded in xyz location, Backend then start the transcription via a background task. It uses Open AI's Whisper Model to generate text from the Audio file, Allowing us to generate the transcription and summary.
