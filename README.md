@@ -62,7 +62,7 @@ There are other alternatives to Open AI's Whisper model, I decided to use Open A
 2. Frontend notifies FastAPI backend → Creates transcription record
 3. Celery task triggered → Downloads file from DO Spaces
 4. OpenAI Whisper API call → Transcription processing
-5. AI Summary generated → GPT API call via OpenAI SDK using Whisper Model
+5. AI Summary generated → GPT API call via OpenAI SDK
 6. Database updated via SQLAlchemy → Status: completed
 ```
 
@@ -78,47 +78,6 @@ There are other alternatives to Open AI's Whisper model, I decided to use Open A
 
 ## Future Implementation for High scalability (Microservices)
 
-### High-Level Architecture
-```
-                           ┌─────────────────────────────────┐
-                           │        Load Balancer            │
-                           │         (NGINX/ALB)             │
-                           └─────────────┬───────────────────┘
-                                         │
-                    ┌────────────────────┼────────────────────┐
-                    │                    │                    │
-              ┌─────▼──────┐    ┌────────▼────────┐    ┌─────▼──────┐
-              │  Store     │    │     Admin       │    │   Mobile   │
-              │ Frontend   │    │   Frontend      │    │    App     │
-              │ (NextJS)   │    │   (NextJS)      │    │ (React N.) │
-              └─────┬──────┘    └────────┬────────┘    └─────┬──────┘
-                    │                    │                   │
-                    └────────────────────┼───────────────────┘
-                                         │
-                           ┌─────────────▼───────────────┐
-                           │       API Gateway           │
-                           │     (Kong/AWS Gateway)      │
-                           │                             │
-                           │ • Authentication            │
-                           │ • Rate Limiting             │
-                           │ • Request Routing           │
-                           │ • Load Balancing            │
-                           └─────────────┬───────────────┘
-                                         │
-        ┌────────────────────────────────┼────────────────────────────────┐
-        │                               │                                │
-   ┌────▼────┐  ┌────▼────┐  ┌────▼────┐  ┌────▼────┐  ┌────▼────┐  ┌────▼────┐
-   │Product  │  │Cart     │  │Order    │  │Payment  │  │Transc.  │  │Notif.   │
-   │Service  │  │Service  │  │Service  │  │Service  │  │Service  │  │Service  │
-   └────┬────┘  └────┬────┘  └────┬────┘  └────┬────┘  └────┬────┘  └────┬────┘
-        │            │            │            │            │            │
-   ┌────▼────┐  ┌────▼────┐  ┌────▼────┐  ┌────▼────┐  ┌────▼────┐  ┌────▼────┐
-   │Product  │  │Cart     │  │Order    │  │Payment  │  │File     │  │Queue    │
-   │   DB    │  │  Cache  │  │   DB    │  │Provider │  │Storage  │  │System   │
-   │(Elastic)│  │(Redis)  │  │(Postgres│  │(Stripe) │  │(DO/S3)  │  │(RabbitMQ│
-   └─────────┘  └─────────┘  └─────────┘  └─────────┘  └─────────┘  └─────────┘
-```
-
 ### Microservices Breakdown
 
 #### 1. Product Service
@@ -129,16 +88,6 @@ There are other alternatives to Open AI's Whisper model, I decided to use Open A
 - Category management
 - Author/narrator data
 - Metadata and AI summaries
-
-**API Endpoints**:
-```python
-GET /api/v1/audiobooks - Search and filter audiobooks
-GET /api/v1/audiobooks/{id} - Get audiobook details
-POST /api/v1/audiobooks - Create audiobook (admin)
-PUT /api/v1/audiobooks/{id} - Update audiobook (admin)
-GET /api/v1/categories - Get categories
-GET /api/v1/search - Advanced search with Elasticsearch
-```
 
 **Database**: 
 - Primary: PostgreSQL (audiobooks, categories, audio_files)
@@ -153,15 +102,6 @@ GET /api/v1/search - Advanced search with Elasticsearch
 - Cart persistence and synchronization
 - Price validation
 
-**API Endpoints**:
-```python
-GET /api/v1/cart - Get user's cart
-POST /api/v1/cart/items - Add item to cart
-PUT /api/v1/cart/items/{id} - Update cart item
-DELETE /api/v1/cart/items/{id} - Remove from cart
-POST /api/v1/cart/clear - Clear cart
-```
-
 **Storage**:
 - Primary: Redis (fast cart operations)
 - Backup: PostgreSQL (cart_items table)
@@ -174,15 +114,6 @@ POST /api/v1/cart/clear - Clear cart
 - Integration with payment service
 - User library management after purchase
 
-**API Endpoints**:
-```python
-POST /api/v1/orders - Create order
-GET /api/v1/orders - Get user orders
-GET /api/v1/orders/{id} - Get order details
-PUT /api/v1/orders/{id}/status - Update order status
-GET /api/v1/library - Get user's purchased audiobooks
-```
-
 #### 4. Payment Service
 **Technology**: FastAPI + Stripe + PostgreSQL
 **Responsibilities**:
@@ -190,14 +121,6 @@ GET /api/v1/library - Get user's purchased audiobooks
 - Webhook handling for payment events
 - Refund processing
 - Payment method management
-
-**API Endpoints**:
-```python
-POST /api/v1/payments/intent - Create payment intent
-POST /api/v1/payments/confirm - Confirm payment
-POST /api/v1/payments/refund - Process refund
-POST /api/v1/webhooks/stripe - Handle Stripe webhooks
-```
 
 #### 5. Transcription Service
 **Technology**: FastAPI + Celery + OpenAI + File Storage
@@ -207,38 +130,11 @@ POST /api/v1/webhooks/stripe - Handle Stripe webhooks
 - Background job processing
 - File management and cleanup
 
-**API Endpoints**:
-```python
-POST /api/v1/transcription/start - Start transcription job
-GET /api/v1/transcription/{job_id}/status - Get job status
-GET /api/v1/transcription/{audiobook_id} - Get transcription
-POST /api/v1/ai/summary - Generate AI summary
-```
-
-**Processing Pipeline**:
-```python
-# Celery Tasks
-@celery.task
-def process_audio_transcription(audio_file_id):
-    # Download from DO Spaces
-    # Call OpenAI Whisper API
-    # Store transcription
-    # Trigger AI summary generation
-    
-@celery.task
-def generate_ai_summary(audiobook_id):
-    # Get transcription
-    # Call OpenAI GPT API
-    # Update audiobook summary
-```
 
 #### 6. Notification Service
-**Technology**: FastAPI + WebSockets + Email Provider
+**Technology**: FastAPI + Email Provider
 **Responsibilities**:
-- Real-time notifications (WebSocket)
 - Email notifications
-- Push notifications for mobile
-- Admin alerts and monitoring
 
 #### 7. User Service
 **Technology**: FastAPI + PostgreSQL + Clerk Integration
@@ -251,9 +147,7 @@ def generate_ai_summary(audiobook_id):
 ### Inter-Service Communication
 
 **Synchronous Communication (REST)**:
-- Direct API calls for immediate data needs
-- Circuit breaker pattern for resilience
-- API Gateway handles routing and authentication
+- Direct Internal API calls for immediate data needs
 
 **Asynchronous Communication (Events)**:
 ```python
@@ -273,24 +167,9 @@ TranscriptionCompleted → Updates audiobook status + notifies admin
 - **Cart Service**: Redis + PostgreSQL (backup)
 - **Order Service**: PostgreSQL (ACID compliance)
 - **Payment Service**: PostgreSQL (audit trail)
-- **User Service**: PostgreSQL (profile data)
+- **User Service**: PostgreSQL (profile data not credentials)
 - **Transcription Service**: PostgreSQL + File Storage metadata
 
-**Shared Data Challenges**:
-```python
-# User data synchronization via events
-class UserProfileUpdated(Event):
-    user_id: str
-    email: str
-    role: str
-    
-# Product data consistency
-class AudiobookUpdated(Event):
-    audiobook_id: str
-    title: str
-    price_cents: int
-    status: str
-```
 
 ### Technology Stack Comparison
 
@@ -311,12 +190,12 @@ class AudiobookUpdated(Event):
 - Implement API Gateway
 - Migrate search functionality
 
-**Phase 2: Extract Stateless Services**
+**Phase 2: Extract Services**
 - Extract Transcription Service
 - Extract Notification Service
 - Implement event streaming
 
-**Phase 3: Extract Stateful Services**
+**Phase 3: Extract Services**
 - Extract Cart Service
 - Extract Order Service
 - Extract Payment Service
@@ -324,4 +203,9 @@ class AudiobookUpdated(Event):
 **Phase 4: Micro-frontend Implementation**
 - Split admin and customer frontends
 - Implement micro-frontend architecture
-- Mobile app development
+ - Product listing MFE
+ - Product Details MFE
+ - Cart MFE
+ - Checkout MFE
+ - User's library MFE
+ - Profile settings MFE
