@@ -103,7 +103,7 @@ export default function CreateAudiobookPage() {
         method: 'POST',
         body: JSON.stringify(formData),
       });
-      
+
       // Create audio files
       for (const audioFile of audioFiles) {
         await apiRequest(apiConfig.endpoints.audioFiles, {

@@ -1,0 +1,262 @@
+// Audiobook E-commerce Database Schema
+// Uses Clerk for authentication - references users by clerk_user_id
+
+Table user_profiles {
+  id uuid [primary key, default: `gen_random_uuid()`]
+  clerk_user_id varchar(255) [unique, not null, note: 'Clerk user ID']
+  email varchar(255) [not null]
+  first_name varchar(100)
+  last_name varchar(100)
+  role user_role [not null, default: 'customer']
+  avatar_url text
+  created_by uuid [ref: > user_profiles.id, not null]
+  updated_at timestamp [default: `now()`]
+  
+  indexes {
+    clerk_user_id [unique]
+    email
+  }
+}
+
+Enum user_role {
+  customer
+  admin
+  super_admin
+}
+
+Table categories {
+  id uuid [primary key, default: `gen_random_uuid()`]
+  name varchar(100) [not null]
+  slug varchar(100) [unique, not null]
+  description text
+  parent_id uuid [ref: > categories.id]
+  sort_order integer [default: 0]
+  is_active boolean [default: true]
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  
+  indexes {
+    slug [unique]
+    parent_id
+    is_active
+  }
+}
+
+
+
+Table audiobooks {
+  id uuid [primary key, default: `gen_random_uuid()`]
+  title varchar(500) [not null]
+  slug varchar(500) [unique, not null]
+  isbn varchar(20)
+  description text
+  ai_summary text [note: 'AI-generated summary']
+  duration_seconds integer [note: 'Total duration in seconds']
+  price_cents integer [not null, note: 'Price in cents']
+  sample_url text [note: 'URL to sample audio clip']
+  cover_image_url text
+  publication_date date
+  language varchar(10) [default: 'en']
+  status audiobook_status [not null, default: 'draft']
+  author_name varchar(255) [not null]
+  narrator_name varchar(255)
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  
+  indexes {
+    slug [unique]
+    status
+    price_cents
+    publication_date
+    created_by
+    title
+  }
+}
+
+Enum audiobook_status {
+  draft
+  processing
+  published
+  archived
+}
+
+
+
+Table audiobook_categories {
+  id uuid [primary key, default: `gen_random_uuid()`]
+  audiobook_id uuid [ref: > audiobooks.id, not null]
+  category_id uuid [ref: > categories.id, not null]
+  
+  indexes {
+    (audiobook_id, category_id) [unique]
+    audiobook_id
+    category_id
+  }
+}
+
+Table audio_files {
+  id uuid [primary key, default: `gen_random_uuid()`]
+  audiobook_id uuid [ref: > audiobooks.id, not null]
+  chapter_number integer
+  chapter_title varchar(255)
+  file_url text [not null, note: 'S3 or CDN URL']
+  file_size_bytes bigint
+  duration_seconds integer
+  mime_type varchar(100)
+  checksum varchar(64) [note: 'File integrity check']
+  created_at timestamp [default: `now()`]
+  
+  indexes {
+    audiobook_id
+    (audiobook_id, chapter_number) [unique]
+  }
+}
+
+Table transcriptions {
+  id uuid [primary key, default: `gen_random_uuid()`]
+  audio_file_id uuid [ref: > audio_files.id, not null]
+  content text [not null]
+  confidence_score decimal(3,2) [note: 'AI transcription confidence 0-1']
+  ai_service varchar(50) [note: 'whisper, google, aws, etc.']
+  status transcription_status [not null, default: 'pending']
+  job_status job_status [not null, default: 'pending', note: 'Overall upload/processing status']
+  upload_progress integer [default: 0, note: 'Upload progress percentage']
+  error_message text
+  processed_at timestamp
+  created_at timestamp [default: `now()`]
+  
+  indexes {
+    audio_file_id
+    status
+  }
+}
+
+Enum transcription_status {
+  pending
+  processing
+  completed
+  failed
+}
+
+Table reviews {
+  id uuid [primary key, default: `gen_random_uuid()`]
+  audiobook_id uuid [ref: > audiobooks.id, not null]
+  user_id uuid [ref: > user_profiles.id, not null]
+  rating integer [not null, note: '1-5 stars']
+  title varchar(255)
+  content text
+  is_verified_purchase boolean [default: false]
+  helpful_count integer [default: 0]
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  
+  indexes {
+    audiobook_id
+    user_id
+    rating
+    created_at
+    (audiobook_id, user_id) [unique, note: 'One review per user per book']
+  }
+}
+
+Table cart_items {
+  id uuid [primary key, default: `gen_random_uuid()`]
+  user_id uuid [ref: > user_profiles.id, not null]
+  session_id varchar(255) [note: 'For guest carts - alternative to user_id']
+  audiobook_id uuid [ref: > audiobooks.id, not null]
+  price_cents integer [not null, note: 'Price at time of adding to cart']
+  added_at timestamp [default: `now()`]
+  
+  indexes {
+    user_id
+    session_id
+    (user_id, audiobook_id) [unique]
+    added_at
+  }
+}
+
+Table orders {
+  id uuid [primary key, default: `gen_random_uuid()`]
+  order_number varchar(50) [unique, not null]
+  user_id uuid [ref: > user_profiles.id, not null]
+  status order_status [not null, default: 'pending']
+  total_cents integer [not null]
+  tax_cents integer [default: 0]
+  payment_method varchar(50)
+  payment_intent_id varchar(255) [note: 'Stripe payment intent ID']
+  billing_email varchar(255)
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  
+  indexes {
+    order_number [unique]
+    user_id
+    status
+    created_at
+  }
+}
+
+Enum order_status {
+  pending
+  processing
+  completed
+  failed
+  refunded
+}
+
+Table order_items {
+  id uuid [primary key, default: `gen_random_uuid()`]
+  order_id uuid [ref: > orders.id, not null]
+  audiobook_id uuid [ref: > audiobooks.id, not null]
+  title varchar(500) [not null, note: 'Snapshot of title at purchase']
+  price_cents integer [not null, note: 'Price at time of purchase']
+  
+  indexes {
+    order_id
+    audiobook_id
+  }
+}
+
+Table user_library {
+  id uuid [primary key, default: `gen_random_uuid()`]
+  user_id uuid [ref: > user_profiles.id, not null]
+  audiobook_id uuid [ref: > audiobooks.id, not null]
+  order_id uuid [ref: > orders.id, not null]
+  download_count integer [default: 0]
+  last_downloaded_at timestamp
+  purchased_at timestamp [not null]
+  
+  indexes {
+    user_id
+    (user_id, audiobook_id) [unique]
+    purchased_at
+  }
+}
+
+Table download_logs {
+  id uuid [primary key, default: `gen_random_uuid()`]
+  user_id uuid [ref: > user_profiles.id, not null]
+  audiobook_id uuid [ref: > audiobooks.id, not null]
+  audio_file_id uuid [ref: > audio_files.id]
+  ip_address inet
+  user_agent text
+  download_url text [note: 'Signed URL used for download']
+  expires_at timestamp
+  created_at timestamp [default: `now()`]
+  
+  indexes {
+    user_id
+    audiobook_id
+    created_at
+  }
+}
+
+
+
+Enum job_status {
+  pending
+  running
+  completed
+  failed
+  cancelled
+}
