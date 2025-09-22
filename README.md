@@ -7,8 +7,10 @@ In this README, I’ve outlined two implementation approaches: the current solut
 ### Architecture Overview
 <img width="686" height="484" alt="Screenshot 2568-09-21 at 23 26 24" src="https://github.com/user-attachments/assets/f0cf804d-a5f0-4b16-80f6-fbee96ca27f4" />
 
+### DB Diagram
+<img width="622" height="645" alt="Screenshot 2568-09-22 at 22 36 33" src="https://github.com/user-attachments/assets/9784a011-5333-4d88-bd41-cd83098bf599" />
 
-### Technology Stack of MVP
+### Technology Stack of Current Implementation (MVP/Monolithic)
 
 **Frontend (NextJS)**
 - **Framework**: Next.js 15+ with App Router
