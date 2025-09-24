@@ -18,7 +18,7 @@ class UserProfile(Base):
     last_name = Column(String(100))
     role = Column(String(20), nullable=False, default=UserRole.CUSTOMER)
     avatar_url = Column(String)
-    created_by = Column(UUID(as_uuid=True), ForeignKey("user_profiles.id"), nullable=False)
+    created_by = Column(UUID(as_uuid=True), ForeignKey("user_profiles.id"), nullable=True)
     updated_at = Column(DateTime(timezone=True), server_default=func.now())
 
     # Relationships

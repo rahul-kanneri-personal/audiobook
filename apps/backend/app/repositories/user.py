@@ -50,14 +50,18 @@ class UserRepository(BaseRepository[UserProfile]):
         created_by: Optional[UUID] = None
     ) -> UserProfile:
         """Create a new user profile from Clerk data."""
+        # Check if this is the first user - if so, make them admin
+        total_users = self.db.query(UserProfile).count()
+        role = UserRole.ADMIN if total_users == 0 else UserRole.CUSTOMER
+        
         user_data = {
             "clerk_user_id": clerk_user_id,
             "email": email,
             "first_name": first_name,
             "last_name": last_name,
-            "role": UserRole.CUSTOMER,
+            "role": role,
             "avatar_url": avatar_url,
-            "created_by": created_by or UUID("00000000-0000-0000-0000-000000000000")  # System user
+            "created_by": created_by  # Keep None for first user
         }
         return self.create(user_data)
 

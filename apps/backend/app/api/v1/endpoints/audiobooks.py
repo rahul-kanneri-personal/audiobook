@@ -5,12 +5,47 @@ from sqlalchemy.orm import Session
 
 from app.db.database import get_db
 from app.core.auth import get_current_admin_user, get_current_user_response
+from app.core.spaces import spaces_client
 from app.models.user import UserProfile
 from app.repositories.audiobook import AudiobookRepository
 from app.repositories.category import CategoryRepository
 from app.schemas.audiobook import AudiobookCreate, AudiobookUpdate, AudiobookResponse, AudiobookListResponse
+from app.schemas.audio_file import PreSignedUrlRequest, PreSignedUrlResponse
 
 router = APIRouter()
+
+
+@router.post("/presigned-url", response_model=PreSignedUrlResponse)
+async def get_presigned_url(
+    request: PreSignedUrlRequest,
+    current_user: UserProfile = Depends(get_current_admin_user)
+):
+    """Generate presigned URL for file upload (Admin only)."""
+    try:
+        # Determine folder based on file type
+        folder = "uploads"
+        if request.file_type.startswith("image/"):
+            folder = "images"
+        elif request.file_type.startswith("audio/"):
+            folder = "audio-files"
+        
+        result = spaces_client.generate_presigned_url(
+            file_name=request.file_name,
+            file_type=request.file_type,
+            folder=folder
+        )
+        
+        return PreSignedUrlResponse(
+            upload_url=result["upload_url"],
+            file_url=result["file_url"],
+            expires_in=result["expires_in"]
+        )
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error generating presigned URL: {str(e)}"
+        )
 
 
 @router.post("/", response_model=AudiobookResponse, status_code=status.HTTP_201_CREATED)

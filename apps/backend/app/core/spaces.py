@@ -12,8 +12,8 @@ class DigitalOceanSpaces:
         self.spaces_client = boto3.client(
             's3',
             endpoint_url=settings.DO_SPACES_ENDPOINT,
-            aws_access_key_id=settings.DO_SPACES_KEY,
-            aws_secret_access_key=settings.DO_SPACES_SECRET,
+            aws_access_key_id=settings.DIGITAL_OCEAN_ACCESS_KEY,
+            aws_secret_access_key=settings.DIGITAL_OCEAN_ACCESS_SECRET,
             region_name=settings.DO_SPACES_REGION
         )
         self.bucket_name = settings.DO_SPACES_BUCKET

@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { AdminLayout } from '@/components/admin/admin-layout';
-import { FileUpload } from '@/components/admin/file-upload';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -30,6 +29,7 @@ interface AudioFile {
   mime_type: string;
   isUploading?: boolean;
   uploadProgress?: number;
+  file?: File; // Store the file object for upload
 }
 
 export default function CreateAudiobookPage() {
@@ -37,6 +37,10 @@ export default function CreateAudiobookPage() {
   const [loading, setLoading] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
   const [audioFiles, setAudioFiles] = useState<AudioFile[]>([]);
+  const [pendingUploads, setPendingUploads] = useState({
+    coverImage: null as File | null,
+    sampleAudio: null as File | null,
+  });
   const [formData, setFormData] = useState({
     title: '',
     slug: '',
@@ -93,19 +97,77 @@ export default function CreateAudiobookPage() {
     }));
   };
 
+  const uploadFileToSpaces = async (file: File): Promise<string> => {
+    // Get presigned URL
+    const { upload_url, file_url } = await apiRequest(
+      apiConfig.endpoints.presignedUrl,
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          file_name: file.name,
+          file_type: file.type,
+          file_size: file.size,
+        }),
+      }
+    );
+
+    // Upload file to Digital Ocean Spaces
+    const uploadResponse = await fetch(upload_url, {
+      method: 'PUT',
+      body: file,
+      headers: {
+        'Content-Type': file.type,
+      },
+    });
+
+    if (!uploadResponse.ok) {
+      throw new Error(`Failed to upload ${file.name}`);
+    }
+
+    return file_url;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      // Create audiobook
+      // Step 1: Upload cover image if present
+      let updatedFormData = { ...formData };
+      if (pendingUploads.coverImage) {
+        const coverImageUrl = await uploadFileToSpaces(pendingUploads.coverImage);
+        updatedFormData.cover_image_url = coverImageUrl;
+      }
+
+      // Step 2: Upload sample audio if present
+      if (pendingUploads.sampleAudio) {
+        const sampleAudioUrl = await uploadFileToSpaces(pendingUploads.sampleAudio);
+        updatedFormData.sample_url = sampleAudioUrl;
+      }
+
+      // Step 3: Upload all audio files
+      const uploadedAudioFiles = [];
+      for (const audioFile of audioFiles) {
+        if (audioFile.file) {
+          const fileUrl = await uploadFileToSpaces(audioFile.file);
+          uploadedAudioFiles.push({
+            ...audioFile,
+            file_url: fileUrl,
+            file: undefined, // Remove the file object
+          });
+        } else {
+          uploadedAudioFiles.push(audioFile);
+        }
+      }
+
+      // Step 4: Create audiobook
       const audiobook = await apiRequest(apiConfig.endpoints.audiobooks, {
         method: 'POST',
-        body: JSON.stringify(formData),
+        body: JSON.stringify(updatedFormData),
       });
 
-      // Create audio files
-      for (const audioFile of audioFiles) {
+      // Step 5: Create audio files
+      for (const audioFile of uploadedAudioFiles) {
         await apiRequest(apiConfig.endpoints.audioFiles, {
           method: 'POST',
           body: JSON.stringify({
@@ -118,6 +180,7 @@ export default function CreateAudiobookPage() {
       router.push('/admin/products');
     } catch (error) {
       console.error('Error creating audiobook:', error);
+      alert('Error creating audiobook. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -142,7 +205,7 @@ export default function CreateAudiobookPage() {
   const updateAudioFile = (
     index: number,
     field: keyof AudioFile,
-    value: string | number
+    value: string | number | File
   ) => {
     setAudioFiles(prev =>
       prev.map((file, i) => (i === index ? { ...file, [field]: value } : file))
@@ -329,39 +392,48 @@ export default function CreateAudiobookPage() {
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label>Cover Image</Label>
-                  <FileUpload
-                    fileType="image"
-                    accept="image/*"
-                    maxSize={10 * 1024 * 1024} // 10MB
-                    onFileUploaded={fileUrl => {
-                      setFormData(prev => ({
-                        ...prev,
-                        cover_image_url: fileUrl,
-                      }));
-                    }}
-                  />
-                  {formData.cover_image_url && (
-                    <div className="text-sm text-gray-600">
-                      <p>Cover Image URL: {formData.cover_image_url}</p>
-                    </div>
-                  )}
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          setPendingUploads(prev => ({ ...prev, coverImage: file }));
+                        }
+                      }}
+                      className="w-full"
+                    />
+                    {pendingUploads.coverImage && (
+                      <div className="mt-2 text-sm text-gray-600">
+                        <p>Selected: {pendingUploads.coverImage.name}</p>
+                        <p>Size: {Math.round(pendingUploads.coverImage.size / 1024 / 1024 * 100) / 100} MB</p>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <div className="space-y-2">
                   <Label>Sample Audio</Label>
-                  <FileUpload
-                    fileType="audio"
-                    accept="audio/*"
-                    maxSize={50 * 1024 * 1024} // 50MB
-                    onFileUploaded={fileUrl => {
-                      setFormData(prev => ({ ...prev, sample_url: fileUrl }));
-                    }}
-                  />
-                  {formData.sample_url && (
-                    <div className="text-sm text-gray-600">
-                      <p>Sample Audio URL: {formData.sample_url}</p>
-                    </div>
-                  )}
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
+                    <input
+                      type="file"
+                      accept="audio/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          setPendingUploads(prev => ({ ...prev, sampleAudio: file }));
+                        }
+                      }}
+                      className="w-full"
+                    />
+                    {pendingUploads.sampleAudio && (
+                      <div className="mt-2 text-sm text-gray-600">
+                        <p>Selected: {pendingUploads.sampleAudio.name}</p>
+                        <p>Size: {Math.round(pendingUploads.sampleAudio.size / 1024 / 1024 * 100) / 100} MB</p>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </CardContent>
@@ -508,36 +580,49 @@ export default function CreateAudiobookPage() {
 
                   <div className="space-y-2">
                     <Label>Audio File</Label>
-                    <FileUpload
-                      fileType="audio"
-                      accept="audio/*"
-                      onFileUploaded={(fileUrl, fileSize, duration) => {
-                        updateAudioFile(index, 'file_url', fileUrl);
-                        updateAudioFile(index, 'file_size_bytes', fileSize);
-                        if (duration) {
-                          updateAudioFile(index, 'duration_seconds', duration);
-                        }
-                      }}
-                    />
-                    {audioFile.file_url && (
-                      <div className="text-sm text-gray-600">
-                        <p>File URL: {audioFile.file_url}</p>
-                        <p>
-                          Size:{' '}
-                          {Math.round(audioFile.file_size_bytes / 1024 / 1024)}
-                          MB
-                        </p>
-                        {audioFile.duration_seconds > 0 && (
-                          <p>
-                            Duration:{' '}
-                            {Math.floor(audioFile.duration_seconds / 60)}:
-                            {(audioFile.duration_seconds % 60)
-                              .toString()
-                              .padStart(2, '0')}
-                          </p>
-                        )}
-                      </div>
-                    )}
+                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
+                      <input
+                        type="file"
+                        accept="audio/*"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            // Get audio duration
+                            const duration = await new Promise<number>((resolve) => {
+                              const audio = new Audio();
+                              const url = URL.createObjectURL(file);
+                              audio.addEventListener('loadedmetadata', () => {
+                                URL.revokeObjectURL(url);
+                                resolve(Math.round(audio.duration));
+                              });
+                              audio.addEventListener('error', () => {
+                                URL.revokeObjectURL(url);
+                                resolve(0);
+                              });
+                              audio.src = url;
+                            });
+
+                            updateAudioFile(index, 'file', file);
+                            updateAudioFile(index, 'file_size_bytes', file.size);
+                            updateAudioFile(index, 'duration_seconds', duration);
+                            updateAudioFile(index, 'mime_type', file.type);
+                          }
+                        }}
+                        className="w-full"
+                      />
+                      {audioFile.file && (
+                        <div className="mt-2 text-sm text-gray-600">
+                          <p>Selected: {audioFile.file.name}</p>
+                          <p>Size: {Math.round(audioFile.file_size_bytes / 1024 / 1024)} MB</p>
+                          {audioFile.duration_seconds > 0 && (
+                            <p>
+                              Duration: {Math.floor(audioFile.duration_seconds / 60)}:
+                              {(audioFile.duration_seconds % 60).toString().padStart(2, '0')}
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               ))}
@@ -554,7 +639,7 @@ export default function CreateAudiobookPage() {
               Cancel
             </Button>
             <Button type="submit" disabled={loading}>
-              {loading ? 'Creating...' : 'Create Audiobook'}
+              {loading ? 'Uploading & Creating...' : 'Create Audiobook'}
             </Button>
           </div>
         </form>

@@ -1,5 +1,7 @@
 from typing import Optional
 import httpx
+import jwt
+from jwt import PyJWKClient
 from fastapi import HTTPException, Depends, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
@@ -18,40 +20,89 @@ class ClerkAuth:
     def __init__(self, secret_key: str):
         self.secret_key = secret_key
         self.base_url = "https://api.clerk.com/v1"
+        # Cache for JWKS client - will be initialized when needed
+        self._jwks_clients = {}
+
+    def _get_jwks_client(self, issuer: str) -> PyJWKClient:
+        """Get or create JWKS client for the given issuer."""
+        if issuer not in self._jwks_clients:
+            jwks_url = f"{issuer}/.well-known/jwks.json"
+            self._jwks_clients[issuer] = PyJWKClient(jwks_url)
+        return self._jwks_clients[issuer]
+
+    def verify_jwt_token(self, token: str) -> Optional[dict]:
+        """Verify Clerk JWT token locally."""
+        try:
+            # Decode header to get issuer and key ID
+            unverified_header = jwt.get_unverified_header(token)
+            unverified_payload = jwt.decode(token, options={"verify_signature": False})
+            
+            issuer = unverified_payload.get("iss")
+            if not issuer:
+                print("No issuer found in token")
+                return None
+            
+            # Get signing key from JWKS
+            jwks_client = self._get_jwks_client(issuer)
+            signing_key = jwks_client.get_signing_key_from_jwt(token)
+            
+            # Verify and decode the token
+            decoded_token = jwt.decode(
+                token,
+                signing_key.key,
+                algorithms=["RS256"],
+                issuer=issuer,
+                options={
+                    "verify_exp": True,
+                    "verify_iat": True,
+                    "verify_nbf": True,
+                }
+            )
+            
+            return decoded_token
+            
+        except jwt.ExpiredSignatureError:
+            print("Token has expired")
+            return None
+        except jwt.InvalidTokenError as e:
+            print(f"Invalid token: {e}")
+            return None
+        except Exception as e:
+            print(f"Error verifying JWT token: {e}")
+            return None
 
     async def verify_token(self, token: str) -> Optional[ClerkUser]:
         """Verify Clerk JWT token and return user data."""
+        # First verify the JWT token locally
+        decoded_token = self.verify_jwt_token(token)
+        if not decoded_token:
+            return None
+        
+        # Extract user ID from the token
+        user_id = decoded_token.get("sub")
+        if not user_id:
+            print("No user ID found in token")
+            return None
+        
         try:
+            # Get user details from Clerk API
             async with httpx.AsyncClient() as client:
-                response = await client.get(
-                    f"{self.base_url}/sessions/{token}/verify",
+                user_response = await client.get(
+                    f"{self.base_url}/users/{user_id}",
                     headers={
                         "Authorization": f"Bearer {self.secret_key}",
                         "Content-Type": "application/json"
                     }
                 )
                 
-                if response.status_code == 200:
-                    session_data = response.json()
-                    user_id = session_data.get("user_id")
+                if user_response.status_code == 200:
+                    return ClerkUser(**user_response.json())
+                else:
+                    print(f"Failed to get user from Clerk API: {user_response.status_code}")
+                    return None
                     
-                    if user_id:
-                        # Get user details
-                        user_response = await client.get(
-                            f"{self.base_url}/users/{user_id}",
-                            headers={
-                                "Authorization": f"Bearer {self.secret_key}",
-                                "Content-Type": "application/json"
-                            }
-                        )
-                        
-                        if user_response.status_code == 200:
-                            return ClerkUser(**user_response.json())
-                
-                return None
-                
         except Exception as e:
-            print(f"Error verifying Clerk token: {e}")
+            print(f"Error getting user from Clerk API: {e}")
             return None
 
     async def get_user_from_token(self, token: str, db: Session) -> Optional[UserProfile]:

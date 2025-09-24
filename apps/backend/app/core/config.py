@@ -44,8 +44,8 @@ class Settings(BaseSettings):
     CLERK_SECRET_KEY: str = ""
 
     # DigitalOcean Spaces
-    DO_SPACES_KEY: str = ""
-    DO_SPACES_SECRET: str = ""
+    DIGITAL_OCEAN_ACCESS_KEY: str = ""
+    DIGITAL_OCEAN_ACCESS_SECRET: str = ""
     DO_SPACES_ENDPOINT: str = "https://nyc3.digitaloceanspaces.com"
     DO_SPACES_REGION: str = "nyc3"
     DO_SPACES_BUCKET: str = ""
